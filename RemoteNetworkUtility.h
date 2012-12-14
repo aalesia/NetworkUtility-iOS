@@ -41,6 +41,4 @@ typedef enum {
 + (NSString *)urlEncodedString:(NSString *)string;
 + (NSString *)urlDecodeString:(NSString *)string;
 
-int base64encode(unsigned s_len, char *src, unsigned d_len, char *dst);
-
 @end

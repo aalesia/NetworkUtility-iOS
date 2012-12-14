@@ -8,6 +8,7 @@
 
 #import "RemoteNetworkUtility.h"
 #import "HttpUserCredentials.h"
+#import "NSData+Base64.h"
 
 #define DEBUG_MODE  1
 #define TIMEOUT     30.0
@@ -254,17 +255,12 @@
         return;
     }
     
-    NSMutableString *dataStr = (NSMutableString*)[@"" stringByAppendingFormat:@"%@:%@", user.username, user.password];
-    NSData *encodeData = [dataStr dataUsingEncoding:NSUTF8StringEncoding];
+    NSString* usernamepwd =[NSString stringWithFormat:@"%@:%@",user.username,user.password];
+    NSData* base64=[usernamepwd dataUsingEncoding:NSASCIIStringEncoding];
     
-    char encodeArray[512];
-    memset(encodeArray, '\0', sizeof(encodeArray));
-    base64encode([encodeData length], (char *)[encodeData bytes], sizeof(encodeArray), encodeArray);
-    NSString *encodedString = [[NSString alloc] initWithBytes:encodeArray length:sizeof(encodeArray) encoding:NSASCIIStringEncoding];
+    NSString* authHeader=[NSString stringWithFormat:@"Basic %@",  [base64 base64EncodedString]];
     
-    NSString *authenticationString = [@"" stringByAppendingFormat:@"Basic %@", encodedString];
-    
-    [request addValue:authenticationString forHTTPHeaderField:@"Authorization"];
+    [request addValue:authHeader forHTTPHeaderField:@"Authorization"];
 }
 
 - (void)setPostBodyEncodingMethod:(PostBodyEncodingMethod)method
@@ -304,7 +300,7 @@
     return parameterUrl;
 }
 
-+ (NSString *)urlEncodedString:(NSString *)string 
++ (NSString *)urlEncodedString:(NSString *)string
 {
     NSString *escaped = [string stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]; 
     escaped = [escaped stringByReplacingOccurrencesOfString:@"&" withString:@"%26"];
@@ -346,53 +342,6 @@
     escaped = [escaped stringByReplacingOccurrencesOfString:@"%22" withString:@"\""];
     escaped = [escaped stringByReplacingOccurrencesOfString:@"%0A" withString:@"\n"];
     return escaped;
-}
-
-#pragma mark - Base64 encoding
-
-static char base64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-"abcdefghijklmnopqrstuvwxyz"
-"0123456789"
-"+/";
-
-int base64encode(unsigned s_len, char *src, unsigned d_len, char *dst)
-{
-    unsigned triad;
-    
-    for (triad = 0; triad < s_len; triad += 3)
-    {
-        unsigned long int sr = 0;
-        unsigned byte;
-        
-        for (byte = 0; (byte<3)&&(triad+byte<s_len); ++byte)
-        {
-            sr <<= 8;
-            sr |= (*(src+triad+byte) & 0xff);
-        }
-        
-        sr <<= (6-((8*byte)%6))%6; /*shift left to next 6bit alignment*/
-        
-        if (d_len < 4) return 1; /* error - dest too short */
-        
-        *(dst+0) = *(dst+1) = *(dst+2) = *(dst+3) = '=';
-        switch(byte)
-        {
-            case 3:
-                *(dst+3) = base64[sr&0x3f];
-                sr >>= 6;
-            case 2:
-                *(dst+2) = base64[sr&0x3f];
-                sr >>= 6;
-            case 1:
-                *(dst+1) = base64[sr&0x3f];
-                sr >>= 6;
-                *(dst+0) = base64[sr&0x3f];
-        }
-        dst += 4; d_len -= 4;
-    }
-    
-    return 0;
-    
 }
 
 @end
